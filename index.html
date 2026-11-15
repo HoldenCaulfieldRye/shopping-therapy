@@ -115,6 +115,7 @@ select.pick option{color:var(--ink);background:var(--bg)}
 .lb button:disabled{opacity:.6;cursor:default}
 .verdict{font:inherit;background:none;border:0;padding:0;cursor:pointer;line-height:1}
 .verdict:focus-visible{outline:2px solid var(--mine);outline-offset:3px;border-radius:6px}
+.comps[hidden],.cres[hidden]{display:none}
 .comps{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;font-size:.95rem}
 .comps label{font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .comps input{font:inherit;flex:1 1 220px;min-width:0;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
@@ -148,7 +149,7 @@ select.pick option{color:var(--ink);background:var(--bg)}
   <div class="wrap">
     <div class="eyebrow">Price a piece</div>
     <p class="sentence">I have a <select class="pick" id="p_size" aria-label="Size"></select> <select class="pick" id="p_type" aria-label="Piece type"></select> from <span class="combo"><input class="pick" id="p_brand" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="p_blist" aria-label="Brand" autocomplete="off" spellcheck="false"><span class="lb" id="p_blist" role="listbox" hidden></span></span> that retails for $<input class="pick" id="p_retail" type="number" min="20" step="10" inputmode="numeric" aria-label="Retail price" style="width:5ch"> in <select class="pick" id="p_cond" aria-label="Condition"></select> condition.</p>
-    <form class="comps" id="c_form"><label for="c_q">Exact piece</label><input id="c_q" type="text" placeholder="e.g. Ischia dress" autocomplete="off" maxlength="60"><button type="submit" class="fbtn" id="c_go">Check live prices</button></form>
+    <form class="comps" id="c_form" hidden><label for="c_q">Exact piece</label><input id="c_q" type="text" placeholder="e.g. Ischia dress" autocomplete="off" maxlength="60"><button type="submit" class="fbtn" id="c_go">Check live prices</button></form>
     <div class="cres" id="c_res" hidden aria-live="polite"></div>
     <div class="answer">
       <p class="sentence"><button type="button" class="verdict" id="p_emoji" aria-expanded="false" aria-controls="p_why"></button> Your piece has a <input class="pick" id="p_chance" type="number" min="1" max="99" inputmode="numeric" aria-label="Chance of selling" style="width:2.6ch">% chance of selling in the next <input class="pick" id="p_days" type="number" min="1" max="180" inputmode="numeric" aria-label="Days" style="width:3.2ch"> days <span id="p_by" style="color:var(--muted)"></span>. List it at $<input class="pick" id="p_list" type="number" min="1" step="5" inputmode="numeric" aria-label="List price" style="width:5ch"> and expect to accept about $<input class="pick" id="p_price" type="number" min="1" step="5" inputmode="numeric" aria-label="Expected sale price" style="width:5ch">.</p>
