@@ -286,7 +286,7 @@ const med=a=>{const s=[...a].sort((x,y)=>x-y);return s[s.length>>1]};
 const typeAvg=(tab,dflt)=>tab?med(tab.map(r=>r[st.y])):dflt;
 const ratio=()=>PM.ratio?(st.b<0?typeAvg(PM.ratio,.85):PM.ratio[st.b][st.y]):.85,FEE=.2;
 const VH=180;// verdict judges the piece over 6 months, independent of the days field
-const V=[[2,"🤩","Amazing find. Buy it and flip it.",100],[1,"🙂","Solid flip.",40],[.3,"😐","Meh. Small profit for the effort."],[0,"😬","Risky. You might only break even."],[-Infinity,"🙅","Don't touch it. Expect to lose money."]];
+const V=[[500,"🤑","Jackpot. Buy it now."],[200,"🤩","Very exciting find."],[100,"🙂","Solid flip."],[50,"😐","Meh. Small profit for the effort."],[-Infinity,"🙅","Don't touch it."]];
 // The model's price sensitivity is understated (near-retail listings skew to special pieces), so it doesn't pick the list price.
 const LIST_MIN=.40,LIST_MAX=.75;
 // list where comparable pieces that sold within 30 days first listed (PM.listr), bounded to 40-75% of retail
@@ -294,7 +294,7 @@ function bestPlan(h=st.days){const cost=st.retail/10,rt=ratio(),lr=Math.max(LIST
   const best={l,p,q,e:q*p*(1-FEE)-cost};curves(st.price);return best}
 function recommend(){st.price=round5(bestPlan().p);fromPrice()}
 function verdict(){const cost=st.retail/10,q6=prob(st.price,VH).mid,best={p:st.price,l:round5(st.price/ratio()),q:q6,e:q6*st.price*(1-FEE)-cost};
-  const roi=best.e/cost,v=V.find(t=>roi>=t[0]&&best.e>=(t[3]||-Infinity));const el=$("p_emoji");el.textContent=v[1];
+  const v=V.find(t=>best.e>=t[0]);const el=$("p_emoji");el.textContent=v[1];
   const why=`${v[2]} Bought at $${Math.round(cost)} (a tenth of retail), listing at $${round5(best.l)} and accepting about $${round5(best.p)} gives a ${Math.round(best.q*100)}% chance of selling within 6 months, for an expected ${best.e>=0?"profit":"loss"} of $${Math.abs(Math.round(best.e))} after Poshmark's 20% fee.`;
   el.title=why;el.setAttribute("aria-label",v[2]+" Tap for details");$("p_why").textContent=why;
 }
