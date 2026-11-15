@@ -167,7 +167,6 @@ select.pick option{color:var(--ink);background:var(--bg)}
     <div class="survtitle"><h2 id="rtitle">Share of listings sold within 7 days</h2><button type="button" class="fbtn" id="rfbtn" aria-expanded="false" aria-controls="rfpanel"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 4h12M4.5 8h7M7 12h2"/></svg>Filters<span class="fcnt" id="rfcount" hidden></span></button></div>
     <div class="fpanel" id="rfpanel" hidden><div class="fgrid" id="rfgroups"></div><div class="ffoot"><span>Pick none in a group to include all</span><button type="button" id="rfreset">Reset</button></div></div>
     <div class="chips" id="rmetric" role="group" aria-label="Ranking metric"><button type="button" class="chip" aria-pressed="true" data-m="speed">Sold within 7 days</button><button type="button" class="chip" aria-pressed="false" data-m="dpd">$ per day listed</button></div>
-    <p class="note" id="rexplain"></p>
     <div class="legend"><span><i style="background:var(--mine)"></i>Your brands</span><span><i style="background:var(--bench)"></i>Dôen benchmark</span><span><i style="background:var(--peer)"></i>Other brands</span><span><i style="background:var(--peer);opacity:.35"></i>Range: low to high estimate</span></div>
     <div class="chart" id="chart" role="img" aria-label="Bar chart of percent of listings sold within 7 days by brand"></div>
     <div class="axis"><span></span><div id="raxis"></div><span></span></div>
@@ -240,7 +239,7 @@ function draw(){
   const R=rank();if(metric==="speed"){D.length=0;R.forEach(r=>D.push([r.name,Math.round(r.lo),r.price,Math.round(r.hi),r.n]))}
   const isD=metric==="dpd",fmt=v=>isD?(v>=10?Math.round(v):v.toFixed(2)):Math.round(v),unit=isD?"":"%";
   document.getElementById("rtitle").textContent=isD?"Dollars earned per day a piece is listed":"Share of listings sold within 7 days";
-  document.getElementById("rexplain").textContent=EXPLAIN[metric];
+
   const mx=Math.max(0,...R.map(r=>r.hi)),step=nice(mx),top=Math.max(step*2,Math.ceil(mx/step-1e-9)*step);el.innerHTML="";
   for(const r of R){const kind=r.mine?"mine":r.name===BENCH?"bench":"peer",a=fmt(r.lo),b=fmt(r.hi);
     const d=document.createElement("div");d.className="row "+(r.mine?"mine":"");
@@ -326,16 +325,21 @@ let vkey="";function sync(){if(document.activeElement!==$("p_cost"))$("p_cost").
   const n=st.b<0?-1:PM.count[st.b][st.y];$("p_basis").textContent=n<0?`No ${st.custom} data yet, so this uses the average ${NOUN[PM.types[st.y]]} across all brands. Requested.`:n>=40?`Based on ${n.toLocaleString()} ${PM.brands[st.b]} ${NOUN[PM.types[st.y]]} listings plus all brands`:`Only ${n} ${PM.brands[st.b]} ${NOUN[PM.types[st.y]]} listings, so this leans on brand and piece-type averages`;
   draw()}
 const box=$("p_chart");let W=900,H=300,L=44,R=60,Tp=14,B=34,pw,ph;const x=d=>L+d/MAXD*pw,y=v=>Tp+(1-v)*ph;
+let hov=null;
 function draw(){W=Math.max(300,box.clientWidth||900);H=W<560?240:300;R=W<560?40:60;pw=W-L-R;ph=H-Tp-B;const D=[];for(let d=0;d<=MAXD;d+=1)D.push(prob(st.price,d));$("p_by").textContent=`(by ${fmtDate(st.days)})`;
   const path=k=>D.map((p,d)=>(d?"L":"M")+x(d).toFixed(1)+","+y(p[k]).toFixed(1)).join("");let g="";
   for(const v of [0,.25,.5,.75,1])g+=`<line x1="${L}" x2="${L+pw}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end" font-size="12" fill="var(--muted)" font-family="var(--mono)">${v*100}%</text>`;
   g+=`<text x="${x(0)}" y="${H-10}" text-anchor="start" font-size="12" fill="var(--ink)" font-family="var(--mono)">Today</text>`;
   for(let i=1;i<=7;i++){const dt=new Date(TODAY.getFullYear(),TODAY.getMonth()+i,1,12),d=(dt-TODAY)/DAY;if(d>MAXD||d<(W<560?18:10))continue;if(W<560&&i%2)continue;g+=`<line x1="${x(d)}" x2="${x(d)}" y1="${Tp+ph}" y2="${Tp+ph+4}" stroke="var(--muted)"/><text x="${x(d)}" y="${H-10}" text-anchor="middle" font-size="12" fill="var(--muted)" font-family="var(--mono)">${dt.toLocaleDateString(undefined,{month:"short"})}</text>`}
   g+=`<path d="${path("mid")}L${x(MAXD)},${y(0)}L${x(0)},${y(0)}Z" fill="var(--accent-soft)"/><path d="${path("mid")}" fill="none" stroke="var(--mine)" stroke-width="2.5" stroke-linejoin="round"/>`;
-  const d=Math.min(MAXD,st.days),p=prob(st.price,d);
-  g+=`<line x1="${x(d)}" x2="${x(d)}" y1="${Tp}" y2="${Tp+ph}" stroke="var(--ink)" stroke-opacity=".35" stroke-dasharray="3 4"/><circle cx="${x(d)}" cy="${y(p.mid)}" r="5" fill="var(--mine)" stroke="var(--bg)" stroke-width="2"/><text x="${x(d)+(d>MAXD*.6?-10:10)}" text-anchor="${d>MAXD*.6?"end":"start"}" y="${y(p.mid)-12}" font-size="13" fill="var(--ink)" font-family="var(--mono)">${Math.round(p.mid*100)}% by ${fmtDate(d)}</text>`;
+  const d=hov==null?Math.min(MAXD,st.days):hov,p=prob(st.price,d),right=d>MAXD*.55;
+  g+=`<line x1="${x(d)}" x2="${x(d)}" y1="${Tp}" y2="${Tp+ph}" stroke="var(--ink)" stroke-opacity=".35" stroke-dasharray="3 4"/><circle cx="${x(d)}" cy="${y(p.mid)}" r="5" fill="var(--mine)" stroke="var(--bg)" stroke-width="2"/><text x="${x(d)+(right?-10:10)}" text-anchor="${right?"end":"start"}" y="${y(p.mid)-14}" font-size="13" fill="var(--ink)" font-family="var(--mono)" paint-order="stroke" stroke="var(--bg)" stroke-width="4">${Math.round(p.mid*100)}% chance of selling for $${st.price} within ${d} day${d===1?"":"s"}</text><text x="${x(d)+(right?-10:10)}" text-anchor="${right?"end":"start"}" y="${y(p.mid)+4}" font-size="12" fill="var(--muted)" font-family="var(--mono)" paint-order="stroke" stroke="var(--bg)" stroke-width="4">by ${fmtDate(d)}${hov!=null&&hov!==st.days?" · click to use":""}</text>`;
   const end=D[MAXD];g+=`<text x="${x(MAXD)+8}" y="${y(end.mid)+4}" font-size="12" fill="var(--muted)" font-family="var(--mono)">${Math.round(end.mid*100)}%</text>`;
-  box.innerHTML=`<svg viewBox="0 0 ${W} ${H}">${g}</svg>`}
+  box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="touch-action:pan-y;cursor:crosshair">${g}</svg>`}
+const dayAt=ev=>{const s=box.querySelector("svg");if(!s)return null;const r=s.getBoundingClientRect(),sx=(ev.clientX-r.left)/r.width*W;return Math.max(1,Math.min(MAXD,Math.round((sx-L)/pw*MAXD)))};
+box.addEventListener("pointermove",ev=>{const d=dayAt(ev);if(d!=null&&d!==hov){hov=d;draw()}});
+box.addEventListener("pointerleave",ev=>{const r=box.getBoundingClientRect();if(ev.clientX>r.left&&ev.clientX<r.right&&ev.clientY>r.top&&ev.clientY<r.bottom)return;if(hov!=null){hov=null;draw()}});
+box.addEventListener("click",ev=>{const d=dayAt(ev);if(d!=null){st.days=d;hov=null;fromPrice();sync()}});
 const num=(id,lo,hi)=>{const v=Math.round(+$(id).value);return isFinite(v)&&v>0?Math.max(lo,Math.min(hi,v)):null};
 for(const [id,k] of [["p_type","y"],["p_size","s"],["p_cond","c"]])$(id).onchange=()=>{st[k]=+$(id).value;recommend();sync()};
 $("p_retail").onchange=()=>{const v=num("p_retail",20,100000);if(v){st.retail=v;recommend()}sync()};
