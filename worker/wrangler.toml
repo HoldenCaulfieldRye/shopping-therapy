@@ -1,0 +1,10 @@
+name = "shopping-therapy"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+ALLOWED_ORIGINS = "https://holdencaulfieldrye.github.io,http://localhost:8787,http://localhost:8000,http://localhost:8765"
+
+[[kv_namespaces]]
+binding = "BRAND_REQUESTS"
+id = "2fc75efe319a461297247c607607fc1e"

@@ -106,6 +106,13 @@ select.pick option{color:var(--ink);background:var(--bg)}
 .answer .sentence{font-size:clamp(1.25rem,2.8vw,1.75rem)}
 .pnote{font-size:.85rem;color:var(--muted);margin:0}
 .pnote.warn{color:var(--mine)}
+.combo{position:relative;display:inline-block}
+.lb[hidden]{display:none}.lb{display:block;position:absolute;left:0;top:calc(100% + 6px);z-index:10;min-width:240px;max-height:300px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:6px;list-style:none;margin:0;font-family:var(--body);font-size:1rem;font-weight:400;letter-spacing:0;line-height:1.3}
+.lb .o,.lb .none{display:block}.lb .o{padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--ink)}
+.lb .o[aria-selected=true]{background:var(--accent-soft)}
+.lb .none{padding:8px 10px;cursor:default;color:var(--muted);font-size:.9rem}
+.lb button{font:inherit;font-weight:600;margin-top:6px;width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--mine);background:var(--mine);color:var(--bg);cursor:pointer}
+.lb button:disabled{opacity:.6;cursor:default}
 .pchart svg{display:block;width:100%;height:auto;overflow:visible}
 @media (max-width:520px){.row,.axis{grid-template-columns:96px 1fr 118px}.band{padding-block:52px}}
 </style>
@@ -121,15 +128,13 @@ select.pick option{color:var(--ink);background:var(--bg)}
 <section class="band warm" id="pricer">
   <div class="wrap">
     <div class="eyebrow">Price a piece</div>
-    <p class="sentence">I have a <select class="pick" id="p_size" aria-label="Size"></select> <select class="pick" id="p_type" aria-label="Piece type"></select> from <select class="pick" id="p_brand" aria-label="Brand"></select> that retails for $<input class="pick" id="p_retail" type="number" min="20" step="10" inputmode="numeric" aria-label="Retail price" style="width:5ch"> in <select class="pick" id="p_cond" aria-label="Condition"></select> condition.</p>
+    <p class="sentence">I have a <select class="pick" id="p_size" aria-label="Size"></select> <select class="pick" id="p_type" aria-label="Piece type"></select> from <span class="combo"><input class="pick" id="p_brand" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="p_blist" aria-label="Brand" autocomplete="off" spellcheck="false"><span class="lb" id="p_blist" role="listbox" hidden></span></span> that retails for $<input class="pick" id="p_retail" type="number" min="20" step="10" inputmode="numeric" aria-label="Retail price" style="width:5ch"> in <select class="pick" id="p_cond" aria-label="Condition"></select> condition.</p>
     <div class="answer">
       <p class="sentence">Your piece has a <input class="pick" id="p_chance" type="number" min="1" max="99" inputmode="numeric" aria-label="Chance of selling" style="width:2.6ch">% chance of selling in the next <input class="pick" id="p_days" type="number" min="1" max="180" inputmode="numeric" aria-label="Days" style="width:3.2ch"> days <span id="p_by" style="color:var(--muted)"></span> for $<input class="pick" id="p_price" type="number" min="1" step="5" inputmode="numeric" aria-label="Price" style="width:5ch">.</p>
       <p class="pnote" id="p_msg"></p>
-      <p class="pnote" id="p_interim" hidden>Seasonal pattern for December–May is provisional (extended from June–November). A full-year update is coming.</p>
       <div class="pchart" id="p_chart" role="img" aria-label="Chance this piece has sold, by days since listing"></div>
       <div class="survfoot"><div class="legend"><span><i style="background:var(--mine)"></i>Chance it has sold by each date</span></div><span class="pnote" id="p_basis"></span></div>
     </div>
-    <p class="note">Change the chance, the days or the price and the sentence updates. Price or days changes update the chance; a chance change updates the price and keeps your days. Forecasts from today's date, so demand for the season ahead (e.g. coats into winter, dresses into summer) is built in. "For $X" is the price it sells at; many sellers lower their price before a sale. Model fit on Poshmark listings $100+ (Jun–Nov 2026); in a holdout test, predicted chances landed within about 2 points of what actually happened.</p>
   </div>
 </section>
 
@@ -246,9 +251,9 @@ const SL={"XXS–XS / 0–2":"size XS (0–2)","S / 4–6":"size S (4–6)","M /
 const CL=["new-with-tags","like-new","good","fair"];
 const opt=(el,arr,lab)=>arr.forEach((v,i)=>{const o=document.createElement("option");o.value=i;o.textContent=lab?lab(v):v;el.append(o)});
 opt($("p_size"),PM.sizes,v=>SL[v]||v);opt($("p_type"),PM.types,v=>TL[v]||v);opt($("p_cond"),CL);
-const order=PM.brands.map((b,i)=>[b,i]).sort((a,b)=>a[0].localeCompare(b[0]));order.forEach(([b,i])=>{const o=document.createElement("option");o.value=i;o.textContent=b;$("p_brand").append(o)});
+
 const st={b:Math.max(0,PM.brands.indexOf("Dôen")),y:0,s:1,c:1,retail:350,days:30,chance:50,target:50,price:0};
-$("p_brand").value=st.b;$("p_type").value=st.y;$("p_size").value=st.s;$("p_cond").value=st.c;$("p_retail").value=st.retail;$("p_days").value=st.days;
+$("p_brand").value=PM.brands[st.b];$("p_type").value=st.y;$("p_size").value=st.s;$("p_cond").value=st.c;$("p_retail").value=st.retail;$("p_days").value=st.days;
 const T=PM.types.length,E=PM.E,RMIN=.1,RMAX=1.2;
 const eta=(M,r)=>{const lr=Math.max(-3,Math.min(.3,Math.log(r)));return M.brand[st.b]+M.type[st.y]+M.bt[st.b*T+st.y]+M.size[st.s]+M.cond[st.c]+M.price[0]*lr+M.price[1]*lr*lr+M.price[3]};
 const TODAY=new Date();TODAY.setHours(12,0,0,0);const DAY=864e5,MAXD=180;
@@ -273,7 +278,8 @@ function msg(t,warn){const m=$("p_msg");m.textContent=t;m.className="pnote"+(war
 const NOUN={"Dresses":"dress","Tops":"top","Sweaters":"sweater","Shoes":"shoe","Jackets & Coats":"jacket and coat","Bags":"bag","Pants & Jumpsuits":"pants","Jeans":"jeans","Skirts":"skirt","Other":"other"};
 const cv=document.createElement("canvas").getContext("2d");
 const fit=el=>{const cs=getComputedStyle(el);cv.font=`${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;el.style.width=Math.ceil(cv.measureText(el.options[el.selectedIndex].text).width+8)+"px"};
-function sync(){$("p_chance").value=st.chance;["p_size","p_type","p_brand","p_cond"].forEach(id=>fit($(id)));$("p_days").value=st.days;$("p_price").value=st.price;
+const fitText=el=>{const cs=getComputedStyle(el);cv.font=`${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;el.style.width=Math.ceil(cv.measureText(el.value||el.placeholder||"brand").width+10)+"px"};
+function sync(){$("p_chance").value=st.chance;["p_size","p_type","p_cond"].forEach(id=>fit($(id)));if(document.activeElement!==$("p_brand"))$("p_brand").value=PM.brands[st.b];fitText($("p_brand"));$("p_days").value=st.days;$("p_price").value=st.price;
   for(const id of ["p_chance","p_days","p_price","p_retail"]){const el=$(id);el.style.width=Math.max(2,String(el.value).length+.6)+"ch"}
   const n=PM.count[st.b][st.y];$("p_basis").textContent=n>=40?`Based on ${n.toLocaleString()} ${PM.brands[st.b]} ${NOUN[PM.types[st.y]]} listings plus all brands`:`Only ${n} ${PM.brands[st.b]} ${NOUN[PM.types[st.y]]} listings, so this leans on brand and piece-type averages`;
   draw()}
@@ -289,15 +295,38 @@ function draw(){W=Math.max(300,box.clientWidth||900);H=W<560?240:300;R=W<560?40:
   const end=D[MAXD];g+=`<text x="${x(MAXD)+8}" y="${y(end.mid)+4}" font-size="12" fill="var(--muted)" font-family="var(--mono)">${Math.round(end.mid*100)}%</text>`;
   box.innerHTML=`<svg viewBox="0 0 ${W} ${H}">${g}</svg>`}
 const num=(id,lo,hi)=>{const v=Math.round(+$(id).value);return isFinite(v)&&v>0?Math.max(lo,Math.min(hi,v)):null};
-for(const [id,k] of [["p_brand","b"],["p_type","y"],["p_size","s"],["p_cond","c"]])$(id).onchange=()=>{st[k]=+$(id).value;fromChance();sync()};
+for(const [id,k] of [["p_type","y"],["p_size","s"],["p_cond","c"]])$(id).onchange=()=>{st[k]=+$(id).value;fromChance();sync()};
 $("p_retail").onchange=()=>{const v=num("p_retail",20,100000);if(v){st.retail=v;fromChance()}sync()};
 $("p_price").onchange=()=>{const v=num("p_price",1,100000);if(v){st.price=v;fromPrice()}sync()};
 $("p_days").onchange=()=>{const v=num("p_days",1,MAXD);if(v){st.days=v;fromPrice()}sync()};
 $("p_chance").onchange=()=>{const v=num("p_chance",1,99);if(v){st.target=v;fromChance()}sync()};
 for(const id of ["p_chance","p_days","p_price","p_retail"])$(id).addEventListener("input",()=>{const el=$(id);el.style.width=Math.max(2,String(el.value).length+.6)+"ch"});
+
+// brand combobox: type to filter, accent-insensitive; no match -> request button (logged by the worker)
+const REQ_URL="https://shopping-therapy.adalyac.workers.dev/brand-request";
+const nrm=s=>String(s).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+const bi=$("p_brand"),lb=$("p_blist");let opts=[],act=-1;
+function openList(){const q=nrm(bi.value),all=PM.brands.map((b,i)=>[b,i,nrm(b)]);
+  opts=(q?all.filter(o=>o[2].includes(q)).sort((a,b)=>(b[2].startsWith(q)-a[2].startsWith(q))||a[0].localeCompare(b[0])):all.sort((a,b)=>a[0].localeCompare(b[0])));
+  act=opts.length?0:-1;lb.innerHTML="";
+  opts.forEach(([b,i],k)=>{const li=document.createElement("span");li.className="o";li.role="option";li.id="p_bo"+k;li.textContent=b;li.setAttribute("aria-selected",k===act);li.onmousedown=e=>{e.preventDefault();pick(k)};lb.append(li)});
+  if(!opts.length){const raw=bi.value.trim();const li=document.createElement("span");li.className="none";li.innerHTML=`No data for “${raw.replace(/[<>&"]/g,"")}” yet.`;
+    const btn=document.createElement("button");btn.type="button";btn.textContent="Request this brand";btn.onmousedown=e=>e.preventDefault();
+    btn.onclick=async()=>{btn.disabled=true;btn.textContent="Sending…";try{const r=await fetch(REQ_URL,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({brand:raw,type:PM.types[st.y],retail:st.retail})});
+      btn.textContent=r.ok?"Requested, thanks":"Couldn't send, try again";if(!r.ok)btn.disabled=false}catch{btn.textContent="Couldn't send, try again";btn.disabled=false}};
+    li.append(btn);lb.append(li)}
+  lb.hidden=false;bi.setAttribute("aria-expanded","true");bi.setAttribute("aria-activedescendant",act>=0?"p_bo"+act:"")}
+function closeList(){lb.hidden=true;bi.setAttribute("aria-expanded","false");bi.removeAttribute("aria-activedescendant")}
+function pick(k){st.b=opts[k][1];bi.value=opts[k][0];closeList();fromChance();sync()}
+function move(d){if(!opts.length)return;act=(act+d+opts.length)%opts.length;[...lb.children].forEach((li,k)=>li.setAttribute("aria-selected",k===act));bi.setAttribute("aria-activedescendant","p_bo"+act);lb.children[act].scrollIntoView({block:"nearest"})}
+bi.addEventListener("focus",()=>{bi.select();openList()});
+bi.addEventListener("click",()=>{if(lb.hidden){bi.select();openList()}});
+bi.addEventListener("input",()=>{fitText(bi);openList()});
+bi.addEventListener("keydown",e=>{if(e.key==="ArrowDown"){e.preventDefault();lb.hidden?openList():move(1)}else if(e.key==="ArrowUp"){e.preventDefault();move(-1)}
+  else if(e.key==="Enter"){if(act>=0&&!lb.hidden){e.preventDefault();pick(act)}}else if(e.key==="Escape"){bi.value=PM.brands[st.b];fitText(bi);closeList()}});
+bi.addEventListener("blur",()=>{setTimeout(()=>{if(lb.contains(document.activeElement))return;closeList();bi.value=PM.brands[st.b];fitText(bi)},150)});
 let rz;addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(draw,120)});
 document.fonts&&document.fonts.ready.then(()=>sync());
-$("p_interim").hidden=!PM.interim;
 fromChance();sync()})();
 const DRV=PD.DRV,OLD=[["Brown",1.44],["Green",1.28],["4–6 photos",1.23],["Black or blue",1.0],["Description over 400 characters",0.77],["10+ photos",0.7],["Pink",0.7],["Selling as a reseller (6+ listings)",0.69],["Adding a video",0.55]];
 const G=DRV.G.map(([t,rows],k)=>{let r=rows.filter(([n])=>n!=="Other"&&!n.startsWith("Listed on "));if(k===1)r=[["Day of the week listed",1.0],...r];return [t,r]});
