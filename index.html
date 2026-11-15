@@ -285,20 +285,21 @@ const fitText=el=>{const cs=getComputedStyle(el);cv.font=`${cs.fontWeight} ${cs.
 const med=a=>{const s=[...a].sort((x,y)=>x-y);return s[s.length>>1]};
 const typeAvg=(tab,dflt)=>tab?med(tab.map(r=>r[st.y])):dflt;
 const ratio=()=>PM.ratio?(st.b<0?typeAvg(PM.ratio,.85):PM.ratio[st.b][st.y]):.85,FEE=.2;
-const V=[[2,"🤩","Amazing find. Buy it and flip it."],[1,"🙂","Decent flip."],[.3,"😐","Meh. Small profit for the effort."],[0,"😬","Risky. You might only break even."],[-Infinity,"🙅","Don't touch it. Expect to lose money."]];
+const VH=180;// verdict judges the piece over 6 months, independent of the days field
+const V=[[2,"🤩","Amazing find. Buy it and flip it.",100],[1,"🙂","Solid flip.",40],[.3,"😐","Meh. Small profit for the effort."],[0,"😬","Risky. You might only break even."],[-Infinity,"🙅","Don't touch it. Expect to lose money."]];
 // The model's price sensitivity is understated (near-retail listings skew to special pieces), so it doesn't pick the list price.
 const LIST_MIN=.40,LIST_MAX=.75;
 // list where comparable pieces that sold within 30 days first listed (PM.listr), bounded to 40-75% of retail
-function bestPlan(){const cost=st.retail/10,rt=ratio(),lr=Math.max(LIST_MIN,Math.min(LIST_MAX,PM.listr?(st.b<0?typeAvg(PM.listr,.62):PM.listr[st.b][st.y]):.62)),l=lr*st.retail,p=l*rt,q=prob(p,st.days).mid;
+function bestPlan(h=st.days){const cost=st.retail/10,rt=ratio(),lr=Math.max(LIST_MIN,Math.min(LIST_MAX,PM.listr?(st.b<0?typeAvg(PM.listr,.62):PM.listr[st.b][st.y]):.62)),l=lr*st.retail,p=l*rt,q=prob(p,h).mid;
   const best={l,p,q,e:q*p*(1-FEE)-cost};curves(st.price);return best}
 function recommend(){st.price=round5(bestPlan().p);fromPrice()}
-function verdict(){const cost=st.retail/10,best=bestPlan();
-  const roi=best.e/cost,v=V.find(t=>roi>=t[0]);const el=$("p_emoji");el.textContent=v[1];
-  const why=`${v[2]} Bought at $${Math.round(cost)} (a tenth of retail), list at $${round5(best.l)} (where similar pieces that sold listed) and accept about $${round5(best.p)}: a ${Math.round(best.q*100)}% chance of selling within ${st.days} days, for an expected ${best.e>=0?"profit":"loss"} of $${Math.abs(Math.round(best.e))} after Poshmark's 20% fee.`;
+function verdict(){const cost=st.retail/10,q6=prob(st.price,VH).mid,best={p:st.price,l:round5(st.price/ratio()),q:q6,e:q6*st.price*(1-FEE)-cost};
+  const roi=best.e/cost,v=V.find(t=>roi>=t[0]&&best.e>=(t[3]||-Infinity));const el=$("p_emoji");el.textContent=v[1];
+  const why=`${v[2]} Bought at $${Math.round(cost)} (a tenth of retail), listing at $${round5(best.l)} and accepting about $${round5(best.p)} gives a ${Math.round(best.q*100)}% chance of selling within 6 months, for an expected ${best.e>=0?"profit":"loss"} of $${Math.abs(Math.round(best.e))} after Poshmark's 20% fee.`;
   el.title=why;el.setAttribute("aria-label",v[2]+" Tap for details");$("p_why").textContent=why;
 }
 const bname=()=>st.b<0?st.custom:PM.brands[st.b];
-let vkey="";function sync(){const k=[st.b,st.custom,st.y,st.s,st.c,st.retail,st.days].join();if(k!==vkey){vkey=k;verdict()}$("p_chance").value=st.chance;$("p_list").value=round5(st.price/ratio());["p_size","p_type","p_cond"].forEach(id=>fit($(id)));if(document.activeElement!==$("p_brand"))$("p_brand").value=bname();fitText($("p_brand"));$("p_days").value=st.days;$("p_price").value=st.price;
+let vkey="";function sync(){const k=[st.b,st.custom,st.y,st.s,st.c,st.retail,st.price].join();if(k!==vkey){vkey=k;verdict()}$("p_chance").value=st.chance;$("p_list").value=round5(st.price/ratio());["p_size","p_type","p_cond"].forEach(id=>fit($(id)));if(document.activeElement!==$("p_brand"))$("p_brand").value=bname();fitText($("p_brand"));$("p_days").value=st.days;$("p_price").value=st.price;
   for(const id of ["p_chance","p_days","p_price","p_retail","p_list"]){const el=$(id);el.style.width=Math.max(2,String(el.value).length+.6)+"ch"}
   const n=st.b<0?-1:PM.count[st.b][st.y];$("p_basis").textContent=n<0?`No ${st.custom} data yet, so this uses the average ${NOUN[PM.types[st.y]]} across all brands. Requested.`:n>=40?`Based on ${n.toLocaleString()} ${PM.brands[st.b]} ${NOUN[PM.types[st.y]]} listings plus all brands`:`Only ${n} ${PM.brands[st.b]} ${NOUN[PM.types[st.y]]} listings, so this leans on brand and piece-type averages`;
   draw()}
