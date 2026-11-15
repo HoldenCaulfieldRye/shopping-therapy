@@ -58,6 +58,35 @@ async function brandRequest(req, env, h) {
   return json(200, { ok: true }, h);
 }
 
+// Live comps: cheapest active + most recent sold Poshmark listings for a search query.
+async function pmSearch(q, availability, sort) {
+  const u = "https://poshmark.com/search?" + new URLSearchParams({ query: q, type: "listings", availability, sort_by: sort, "price[]": "20-" });
+  const r = await fetch(u, { headers: { "User-Agent": "Mozilla/5.0", "Accept": "text/html" }, cf: { cacheTtl: 300 } });
+  if (!r.ok) throw new Error("poshmark " + r.status);
+  const html = await r.text(), k = html.indexOf("window.__INITIAL_STATE__=");
+  if (k < 0) throw new Error("no listings in page");
+  let depth = 0, i = k + 25, j = i, inStr = false, esc = false;
+  for (; j < html.length; j++) { const c = html[j];
+    if (inStr) { if (esc) esc = false; else if (c === "\\") esc = true; else if (c === '"') inStr = false; continue }
+    if (c === '"') inStr = true; else if (c === "{" || c === "[") depth++; else if (c === "}" || c === "]") { depth--; if (!depth) { j++; break } } }
+  const out = [], seen = new Set();
+  (function walk(o) { if (Array.isArray(o)) return o.forEach(walk); if (!o || typeof o !== "object") return;
+    if (o.inventory && o.first_published_at && o.id) { if (!seen.has(o.id)) { seen.add(o.id);
+      out.push({ title: o.title, price: Number(o.price_amount?.val || 0), first: Number(o.first_user_price_amount?.val || 0), size: o.size || "", cond: o.condition || "",
+        brand: o.brand || "", url: "https://poshmark.com/listing/" + o.id, sold: o.inventory.status === "sold_out", at: o.inventory.status_changed_at || o.first_published_at }) } return }
+    Object.values(o).forEach(walk) })(JSON.parse(html.slice(i, j)));
+  return out;
+}
+async function comps(req, h) {
+  let body; try { body = JSON.parse((await req.text()).slice(0, 1000)); } catch { return json(400, { error: "bad json" }, h); }
+  const q = String(body.q || "").replace(/\s+/g, " ").trim().slice(0, 80);
+  if (q.length < 3) return json(400, { error: "query too short" }, h);
+  try {
+    const [active, sold] = await Promise.all([pmSearch(q, "available", "price_asc"), pmSearch(q, "sold_out", "added_desc")]);
+    return json(200, { q, active: active.slice(0, 10), sold: sold.filter(x => x.sold).slice(0, 10) }, h);
+  } catch (e) { return json(502, { error: String(e.message || e) }, h); }
+}
+
 export default {
   async fetch(req, env) {
     const h = cors(req.headers.get("Origin") || "", env);
@@ -65,6 +94,7 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: h });
     if (req.method !== "POST") return json(405, { error: "POST only" }, h);
     if (new URL(req.url).pathname === "/brand-request") return brandRequest(req, env, h);
+    if (new URL(req.url).pathname === "/comps") return comps(req, h);
     const raw = await req.text();
     if (raw.length > MAX_BODY) return json(413, { error: "conversation too long, start a new chat" }, h);
     let messages;
