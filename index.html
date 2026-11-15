@@ -115,6 +115,23 @@ select.pick option{color:var(--ink);background:var(--bg)}
 .lb button:disabled{opacity:.6;cursor:default}
 .verdict{font:inherit;background:none;border:0;padding:0;cursor:pointer;line-height:1}
 .verdict:focus-visible{outline:2px solid var(--mine);outline-offset:3px;border-radius:6px}
+.comps{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;font-size:.95rem}
+.comps label{font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.comps input{font:inherit;flex:1 1 220px;min-width:0;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.comps input:focus-visible{outline:2px solid var(--mine);outline-offset:1px}
+.comps .fbtn{margin-top:0}
+.cres{background:var(--bg);border:1px solid var(--line);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.cres .rule{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.cres .rule p{margin:0;font-size:1rem}
+.cres .use{font:inherit;font-weight:600;border:0;border-radius:999px;background:var(--mine);color:var(--bg);padding:8px 16px;cursor:pointer}
+.ccols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px 28px}
+.ccols h4{margin:0 0 6px;font-family:var(--mono);font-size:.72rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.ccols ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:7px;font-size:.88rem}
+.ccols li{display:grid;grid-template-columns:3.2em 1fr;column-gap:10px;align-items:baseline;min-width:0}
+.ccols li b{font-family:var(--mono);font-weight:500;font-variant-numeric:tabular-nums}
+.ccols li a{color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration-color:var(--line);min-width:0}
+.ccols li.mine a{color:var(--mine)}
+.ccols li span{grid-column:2;color:var(--muted);font-size:.8rem}
 .pchart svg{display:block;width:100%;height:auto;overflow:visible}
 @media (max-width:520px){.row,.axis{grid-template-columns:96px 1fr 118px}.band{padding-block:52px}}
 </style>
@@ -131,6 +148,8 @@ select.pick option{color:var(--ink);background:var(--bg)}
   <div class="wrap">
     <div class="eyebrow">Price a piece</div>
     <p class="sentence">I have a <select class="pick" id="p_size" aria-label="Size"></select> <select class="pick" id="p_type" aria-label="Piece type"></select> from <span class="combo"><input class="pick" id="p_brand" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="p_blist" aria-label="Brand" autocomplete="off" spellcheck="false"><span class="lb" id="p_blist" role="listbox" hidden></span></span> that retails for $<input class="pick" id="p_retail" type="number" min="20" step="10" inputmode="numeric" aria-label="Retail price" style="width:5ch"> in <select class="pick" id="p_cond" aria-label="Condition"></select> condition.</p>
+    <form class="comps" id="c_form"><label for="c_q">Exact piece</label><input id="c_q" type="text" placeholder="e.g. Ischia dress" autocomplete="off" maxlength="60"><button type="submit" class="fbtn" id="c_go">Check live prices</button></form>
+    <div class="cres" id="c_res" hidden aria-live="polite"></div>
     <div class="answer">
       <p class="sentence"><button type="button" class="verdict" id="p_emoji" aria-expanded="false" aria-controls="p_why"></button> Your piece has a <input class="pick" id="p_chance" type="number" min="1" max="99" inputmode="numeric" aria-label="Chance of selling" style="width:2.6ch">% chance of selling in the next <input class="pick" id="p_days" type="number" min="1" max="180" inputmode="numeric" aria-label="Days" style="width:3.2ch"> days <span id="p_by" style="color:var(--muted)"></span>. List it at $<input class="pick" id="p_list" type="number" min="1" step="5" inputmode="numeric" aria-label="List price" style="width:5ch"> and expect to accept about $<input class="pick" id="p_price" type="number" min="1" step="5" inputmode="numeric" aria-label="Expected sale price" style="width:5ch">.</p>
       <p class="pnote" id="p_why" hidden></p>
@@ -286,7 +305,8 @@ const med=a=>{const s=[...a].sort((x,y)=>x-y);return s[s.length>>1]};
 const typeAvg=(tab,dflt)=>tab?med(tab.map(r=>r[st.y])):dflt;
 const ratio=()=>PM.ratio?(st.b<0?typeAvg(PM.ratio,.85):PM.ratio[st.b][st.y]):.85,FEE=.2;
 const VH=180;// verdict judges the piece over 6 months, independent of the days field
-const V=[[500,"🤑","Jackpot. Buy it now."],[200,"🤩","Very exciting find."],[100,"🙂","Solid flip."],[50,"😐","Meh. Small profit for the effort."],[-Infinity,"🙅","Don't touch it."]];
+const V=[[500,"🤩","Jackpot. Buy it now."],[200,"🤩","Very exciting find."],[100,"🙂","Solid flip."],[50,"😐","Meh. Small profit for the effort."],[-Infinity,"🙅","Don't touch it."]];
+const faces=(v,e)=>v[1]==="🤩"?"🤩".repeat(Math.min(10,Math.floor(e/100)-1)):v[1];
 // The model's price sensitivity is understated (near-retail listings skew to special pieces), so it doesn't pick the list price.
 const LIST_MIN=.40,LIST_MAX=.75;
 // list where comparable pieces that sold within 30 days first listed (PM.listr), bounded to 40-75% of retail
@@ -294,7 +314,7 @@ function bestPlan(h=st.days){const cost=st.retail/10,rt=ratio(),lr=Math.max(LIST
   const best={l,p,q,e:q*p*(1-FEE)-cost};curves(st.price);return best}
 function recommend(){st.price=round5(bestPlan().p);fromPrice()}
 function verdict(){const cost=st.retail/10,q6=prob(st.price,VH).mid,best={p:st.price,l:round5(st.price/ratio()),q:q6,e:q6*st.price*(1-FEE)-cost};
-  const v=V.find(t=>best.e>=t[0]);const el=$("p_emoji");el.textContent=v[1];
+  const v=V.find(t=>best.e>=t[0]);const el=$("p_emoji");el.textContent=faces(v,best.e);
   const why=`${v[2]} Bought at $${Math.round(cost)} (a tenth of retail), listing at $${round5(best.l)} and accepting about $${round5(best.p)} gives a ${Math.round(best.q*100)}% chance of selling within 6 months, for an expected ${best.e>=0?"profit":"loss"} of $${Math.abs(Math.round(best.e))} after Poshmark's 20% fee.`;
   el.title=why;el.setAttribute("aria-label",v[2]+" Tap for details");$("p_why").textContent=why;
 }
@@ -347,6 +367,31 @@ bi.addEventListener("input",()=>{fitText(bi);openList()});
 bi.addEventListener("keydown",e=>{if(e.key==="Enter"&&act<0&&!lb.hidden){const b=lb.querySelector("button");if(b){e.preventDefault();b.click();return}}if(e.key==="ArrowDown"){e.preventDefault();lb.hidden?openList():move(1)}else if(e.key==="ArrowUp"){e.preventDefault();move(-1)}
   else if(e.key==="Enter"){if(act>=0&&!lb.hidden){e.preventDefault();pick(act)}}else if(e.key==="Escape"){bi.value=bname();fitText(bi);closeList()}});
 bi.addEventListener("blur",()=>{setTimeout(()=>{if(lb.contains(document.activeElement))return;closeList();bi.value=bname();fitText(bi)},150)});
+
+// live comps via worker: cheapest active + recently sold; friend's rule = list $5 under the cheapest (prefer same size)
+const COMPS_URL="https://shopping-therapy.adalyac.workers.dev/comps";
+const sizeB=(s,isShoe)=>{if(isShoe)return 5;s=String(s||"").toUpperCase().trim().replace(/\s*\/.*$/,"");if(["OS","ONE SIZE","OSFA","OSFM"].includes(s))return 4;
+  if(/^(XXS|XS|00|0|2|23|24|25|34|36)$/.test(s))return 0;if(/^(S|4|6|26|27|38)$/.test(s))return 1;if(/^(M|8|28|29|40)$/.test(s))return 2;if(/^(L|XL|XXL|1X|2X|10|12|14|16|30|31|32|33|42|44|46)$/.test(s))return 3;return 6};
+const esc2=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const dshort=iso=>{const d=new Date(iso);return isNaN(d)?"":d.toLocaleDateString(undefined,{month:"short",day:"numeric"})};
+const fitAll=()=>{for(const id of ["p_chance","p_days","p_price","p_retail","p_list"]){const el=$(id);el.style.width=Math.max(2,String(el.value).length+.6)+"ch"}};
+$("c_form").onsubmit=async e=>{e.preventDefault();const raw=$("c_q").value.trim();if(!raw)return $("c_q").focus();
+  const bn=bname(),plain=s=>s.normalize("NFD").replace(/[\u0300-\u036f]/g,""),q=plain(nrm(raw).includes(nrm(bn))?raw:bn+" "+raw),box=$("c_res"),go=$("c_go");
+  go.disabled=true;go.textContent="Checking…";box.hidden=false;box.innerHTML='<p class="pnote">Searching Poshmark…</p>';
+  try{const r=await fetch(COMPS_URL,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({q})});const d=await r.json();if(!r.ok)throw new Error(d.error||r.status);
+    const shoe=PM.types[st.y]==="Shoes",mine=x=>sizeB(x.size,shoe)===st.s,kb=nrm(bn),ours=x=>nrm(x.brand).includes(kb)||(!x.brand&&nrm(x.title).includes(kb));
+    d.active=d.active.filter(ours);d.sold=d.sold.filter(ours);
+    if(!d.active.length&&!d.sold.length){box.innerHTML='<p class="pnote">No '+esc2(bn)+' listings found for “'+esc2(raw)+'”. Try fewer words.</p>';return}
+    const same=d.active.filter(mine),pick=same[0]||d.active[0],tgt=pick?Math.max(5,Math.floor(pick.price)-5):null;
+    const row=(x,extra)=>'<li class="'+(mine(x)?"mine":"")+'"><b>$'+Math.round(x.price)+'</b><a href="'+esc2(x.url)+'" target="_blank" rel="noopener" title="'+esc2(x.title)+'">'+esc2(x.title)+'</a><span>'+extra+'</span></li>';
+    const act=d.active.slice(0,6).map(x=>row(x,"Size "+esc2(x.size||"not given"))).join("")||"<li><span>None</span></li>";
+    const sold=d.sold.slice(0,6).map(x=>row(x,"Sold "+dshort(x.at)+(x.first>x.price?" · listed $"+Math.round(x.first):"")+" · size "+esc2(x.size||"not given"))).join("")||"<li><span>None</span></li>";
+    box.innerHTML=(pick?'<div class="rule"><p>Cheapest '+(same.length?"in your size":"for sale now")+': <b>$'+Math.round(pick.price)+'</b> (size '+esc2(pick.size||"not given")+'). List at <b>$'+tgt+'</b> to undercut it.</p><button type="button" class="use" id="c_use">List at $'+tgt+'</button></div>':'<p class="pnote">Nothing for sale right now, only recent sales.</p>')+
+      '<div class="ccols"><div><h4>For sale now · cheapest first</h4><ol>'+act+'</ol></div><div><h4>Recently sold</h4><ol>'+sold+'</ol></div></div>'+
+      '<p class="pnote">Your size is highlighted. Titles can include other styles, so check the links.</p>';
+    const u=$("c_use");if(u)u.onclick=()=>{st.price=round5(tgt*ratio());fromPrice();sync();$("p_list").value=tgt;fitAll()}}
+  catch(err){box.innerHTML='<p class="pnote warn">Couldn\'t reach Poshmark ('+esc2(err.message)+'). Try again.</p>'}
+  finally{go.disabled=false;go.textContent="Check live prices"}};
 let rz;addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(draw,120)});
 document.fonts&&document.fonts.ready.then(()=>sync());
 recommend();sync()})();
