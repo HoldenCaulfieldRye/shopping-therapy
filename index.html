@@ -305,7 +305,7 @@ const med=a=>{const s=[...a].sort((x,y)=>x-y);return s[s.length>>1]};
 const typeAvg=(tab,dflt)=>tab?med(tab.map(r=>r[st.y])):dflt;
 const ratio=()=>PM.ratio?(st.b<0?typeAvg(PM.ratio,.85):PM.ratio[st.b][st.y]):.85,FEE=.2;
 const VH=180;// verdict judges the piece over 6 months, independent of the days field
-const V=[[500,"🤩","Jackpot. Buy it now."],[200,"🤩","Very exciting find."],[100,"🙂","Solid flip."],[50,"😐","Meh. Small profit for the effort."],[-Infinity,"🙅","Don't touch it."]];
+const V=[[500,"🤩","Jackpot. Buy it now."],[200,"🤩","Very exciting find."],[50,"🙂","Solid flip."],[20,"😐","Meh. Small profit for the effort."],[-Infinity,"🙅","Don't touch it."]];
 const faces=(v,e)=>v[1]==="🤩"?"🤩".repeat(Math.min(10,Math.floor(e/100)-1)):v[1];
 // The model's price sensitivity is understated (near-retail listings skew to special pieces), so it doesn't pick the list price.
 const LIST_MIN=.40,LIST_MAX=.75;
